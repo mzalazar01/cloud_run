@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from google.cloud import bigquery
-from flask import Flask
+from flask import Flask, request, jsonify
 import requests as req
 import gzip
 import json
@@ -19,6 +19,7 @@ def hello_word():
 def main():
     request_json = request.get_json()
     get_insert_is_data(request_json)
+    return 'User reports loaded!'
 
 
 def get_insert_is_data(params):
