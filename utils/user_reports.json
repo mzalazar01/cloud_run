@@ -1,0 +1,10 @@
+[
+    {
+        "appID": "SUB",
+        "baseURL": "https://platform.ironsrc.com/partners/userAdRevenue/v3",
+        "parameters": {
+            "appKey": "b42a1585",
+            "reportType": 1
+        }
+    }
+]
