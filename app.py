@@ -1,17 +1,17 @@
 from datetime import datetime, timedelta
-from flask import Flask, request
-import requests as req
+from fastapi import FastAPI, Body
 from google.cloud import storage
-from utils.model import RowModel
+from utils.model import RequestModel
+import requests as req
 import logging
 import shutil
 import gzip
 import json
-import csv
 import os
 
-app = Flask(__name__)
+app = FastAPI()
 
+#Setting path to create files in the correct directory
 BASE_PATH = os.path.dirname(os.path.abspath(__file__))
 
 # Logging definition
@@ -24,34 +24,33 @@ ch.setLevel(logging.INFO)  # or any other level
 logger.addHandler(ch)
 
 
-@app.route("/", methods=['GET'])
-def hello_word():
-    return 'Hello World'
+@app.get("/",status_code=200)
+async def hello_word():
+    return {'message':'Hello World'}
 
-@app.route("/is_user_reports", methods=['POST'])
-def main():
-    request_json = request.get_json()
-    get_insert_is_data(request_json)
-    return 'User reports loaded!'
-
-
-def get_insert_is_data(params):
+@app.post("/is_user_reports/", status_code=201)
+async def main(request: RequestModel):
     path = os.path.join(BASE_PATH, 'utils/user_reports.json')
 
+    params = request.dict()
+    
     token = get_bearer_token(params['secret_key'], params['refresh_token'])
 
     requests_file = get_json(path)
 
-    get_is_data(params['ds'], params['project_id'], requests_file, token)
+    get_is_data(params['ds'], params['project_id'], params['bucket_name'], requests_file, token)
 
+    return {'message': f"Reports loaded successfully on bucket {params['bucket_name']} from project {params['project_id']}"}
 
 def get_bearer_token(secret_key, refresh_token):
     auth_headers = {
         "secretkey": secret_key,
         "refreshToken": refresh_token
     }
+
     response = req.get(
         "https://platform.ironsrc.com/partners/publisher/auth", headers=auth_headers).json()
+
     return response
 
 
@@ -61,12 +60,13 @@ def get_json(path):
     return requests_file
 
 
-def remove_file(path):
-    if os.path.exists(path):
-        os.remove(path)
+def remove_file(paths):
+    for path in paths:
+        if os.path.exists(path):
+            os.remove(path)
 
 
-def get_is_data(ds, project_id, requests_file, token):
+def get_is_data(ds, project_id, bucket_name, requests_file, token):
 
     header = {'Authorization': f"Bearer {token}"}
     
@@ -89,11 +89,9 @@ def get_is_data(ds, project_id, requests_file, token):
             logger.info(
                 f'Getting data from IR Api: {datetime.now().strftime("%H:%M:%S")}')
 
+
             url = req.get(config['baseURL'], headers=header,
                           params=config['parameters']).json()
-
-            #Remove current csv file
-
             
             # Hit API and get link to file
 
@@ -105,10 +103,9 @@ def get_is_data(ds, project_id, requests_file, token):
 
             #Making paths to temp files
             csv_zipped = os.path.join(BASE_PATH, 'temp/temp.csv.gz')
-            csv_unzip = os.path.join(BASE_PATH, f"temp/user_reports_{appkey}_{process_date}.csv")
+            csv_unzipped = os.path.join(BASE_PATH, f"temp/user_reports_{appkey}_{process_date}.csv")
 
-
-            remove_file(csv_zipped) 
+            remove_file([csv_zipped, csv_unzipped]) 
 
             # Download the content of the request into a file
             with open(csv_zipped, 'wb') as f:
@@ -119,42 +116,39 @@ def get_is_data(ds, project_id, requests_file, token):
             
             #Unzipping and parsing data from reports file
             
-            with gzip.open(csv_zipped, "rt", newline="") as f_in:
-                rows = list(csv.DictReader(f_in, delimiter=',', quotechar="'")) #Getting list of dicts from zipped file
-
-                #Validate incoming data
-                for row in rows:
-                    _ = RowModel(**row)
+            with gzip.open(csv_zipped, "rb") as f_in:
+                insert_is_data(f_in, csv_unzipped, project_id, bucket_name)
                 
-                #Creating final uncompressed and validated csv
 
-                remove_file(csv_unzip)
+            logger.info(
+            f'Uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
+            
+            #Inserting final csv into bucket
+            
 
-                with open(csv_unzip, 'wb') as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            logger.info(
+            f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
 
-                logger.info(
-                f'Uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
-                
-                #Inserting final csv into bucket
-                #insert_is_data(csv_unzip, project_id)
-
-                logger.info(
-                f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
-
-
-
+            remove_file([csv_zipped, csv_unzipped]) 
 
 
 def insert_is_data(
     csv_file,
-    project_id
+    path,
+    project_id,
+    bucket_name
 ):
-    storage_client = storage.Client(project=project_id)
-    bucket = storage_client.get_bucket('sybogames-analytics-dev')
-    blob = bucket.blob(csv_file)  
-    blob.upload_from_filename(csv_file)
+    client = storage.Client(project=project_id)
+    bucket = client.get_bucket(bucket_name)
+    blob = bucket.blob(f"user_reports/{path.split('/')[-1]}") 
+    blob.upload_from_file(csv_file)
 
 
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+def get(self):
+  bucket_name = os.environ.get('BUCKET_NAME',
+                               'sybogames-analytics-dev')
+
+  self.response.headers['Content-Type'] = 'text/plain'
+  self.response.write('Demo GCS Application running from Version: '
+                      + os.environ['CURRENT_VERSION_ID'] + '\n')
+  self.response.write('Using bucket name: ' + bucket_name + '\n\n')
