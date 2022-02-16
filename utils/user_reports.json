@@ -3,6 +3,30 @@
         "appID": "SUB",
         "baseURL": "https://platform.ironsrc.com/partners/userAdRevenue/v3",
         "parameters": {
+            "appKey": "b427299d",
+            "reportType": 1
+        }
+    },
+    {
+        "appID": "SUB",
+        "baseURL": "https://platform.ironsrc.com/partners/userAdRevenue/v3",
+        "parameters": {
+            "appKey": "b428bc55",
+            "reportType": 1
+        }
+    },
+    {
+        "appID": "SUB",
+        "baseURL": "https://platform.ironsrc.com/partners/userAdRevenue/v3",
+        "parameters": {
+            "appKey": "b42a1585",
+            "reportType": 1
+        }
+    },
+    {
+        "appID": "SUB",
+        "baseURL": "https://platform.ironsrc.com/partners/userAdRevenue/v3",
+        "parameters": {
             "appKey": "e4895939",
             "reportType": 1
         }
