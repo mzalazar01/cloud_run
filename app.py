@@ -1,10 +1,9 @@
 from datetime import datetime, timedelta
 from fastapi import FastAPI, Body
-from google.cloud import storage
-from utils.model import RequestModel
+from utils.models import BaseRequestModel
+from utils.utils import get_bearer_token, remove_file, insert_file_to_bucket, explode
 import requests as req
 import logging
-import shutil
 import gzip
 import json
 import os
@@ -28,58 +27,37 @@ logger.addHandler(ch)
 async def hello_word():
     return {'message':'Hello World'}
 
-@app.post("/is_user_reports/", status_code=201)
-async def main(request: RequestModel):
-    path = os.path.join(BASE_PATH, 'utils/user_reports.json')
+@app.post("/ironsource/user_reports/", status_code=201)
+async def user_reports(request: BaseRequestModel):
 
     params = request.dict()
     
-    token = get_bearer_token(params['secret_key'], params['refresh_token'])
+    token = get_bearer_token(params['secretKey'], params['refreshToken'])
 
-    requests_file = get_json(path)
+    get_user_reports(params, token)
 
-    get_is_data(params['ds'], params['project_id'], params['bucket_name'], requests_file, token)
-
-    return {'message': f"Reports loaded successfully on bucket {params['bucket_name']} from project {params['project_id']}"}
-
-def get_bearer_token(secret_key, refresh_token):
-    auth_headers = {
-        "secretkey": secret_key,
-        "refreshToken": refresh_token
-    }
-
-    response = req.get(
-        "https://platform.ironsrc.com/partners/publisher/auth", headers=auth_headers).json()
-
-    return response
+    return {'message': f"Reports loaded successfully on bucket {params['bucketName']} from project {params['projectId']}"}
 
 
-def get_json(path):
-    with open(path) as _file:
-        requests_file = json.load(_file)
-    return requests_file
-
-
-def remove_file(path):
-    if os.path.exists(path):
-        os.remove(path)
-
-
-def get_is_data(ds, project_id, bucket_name, requests_file, token):
+def get_user_reports(params, token):
 
     header = {'Authorization': f"Bearer {token}"}
     
-    for config in requests_file:
-        for i in range(3, 0, -1):  # Checking last 3 days in ascending order
+    for config in params['requests']:
+        for i in range(config['startDate'], config['endDate'], -1):  # Checking since since_date until ds
+            _conf = config.copy()
+
             _dict = {
-                'date': (datetime.strptime(ds, '%Y-%m-%d') - timedelta(days=i)).strftime('%Y-%m-%d'),
+                'date': (datetime.strptime(params['ds'], '%Y-%m-%d') - timedelta(days=i)).strftime('%Y-%m-%d'),
+                'appKey': config['appKey'],
+                'reportType': config['parameters']['reportType']
             }
-
-            config['parameters'].update(_dict)
             
-            appkey = config['parameters']['appKey']
+            _conf['parameters'].update(_dict)
+            
+            appkey = _conf['parameters']['appKey']
 
-            process_date = config['parameters']['date']
+            process_date = _conf['parameters']['date']
 
             logger.info(
                 f"Reading data from appkey {appkey} and date {process_date}")
@@ -89,8 +67,8 @@ def get_is_data(ds, project_id, bucket_name, requests_file, token):
                 f'Getting data from IR Api: {datetime.now().strftime("%H:%M:%S")}')
 
 
-            url = req.get(config['baseURL'], headers=header,
-                          params=config['parameters']).json()
+            url = req.get(_conf['baseURL'], headers=header,
+                          params=_conf['parameters']).json()
             
             # Hit API and get link to file
 
@@ -101,7 +79,7 @@ def get_is_data(ds, project_id, bucket_name, requests_file, token):
 
             #Making paths to temp files
             csv_zipped = os.path.join(BASE_PATH, 'temp/temp.csv.gz')
-            csv_unzipped = os.path.join(BASE_PATH, f"temp/user_reports_{appkey}_{process_date}.csv")
+            blob_path = f"user_reports/user_reports_{appkey}_{process_date}.csv"
 
             remove_file(csv_zipped) 
 
@@ -115,18 +93,70 @@ def get_is_data(ds, project_id, bucket_name, requests_file, token):
             #Inserting csv into bucket
 
             with gzip.open(csv_zipped, "rb") as f_in:
-                insert_is_data(f_in, csv_unzipped, project_id, bucket_name)
+                insert_file_to_bucket(f_in, blob_path, params['projectId'], params['bucketName'])
             
             logger.info(
             f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
 
-def insert_is_data(
-    _file,
-    blob_path,
-    project_id,
-    bucket_name
-):
-    client = storage.Client(project=project_id)
-    bucket = client.get_bucket(bucket_name)
-    blob = bucket.blob(f"user_reports/{blob_path.split('/')[-1]}") 
-    blob.upload_from_file(_file)
+
+@app.post("/ironsource/ad_revenue_reports/", status_code=201)
+async def ad_revenue_reports(request: BaseRequestModel):
+
+    params = request.dict()
+    
+    token = get_bearer_token(params['secretKey'], params['refreshToken'])
+
+    get_revenue_reports(params, token)
+
+    return {'message': f"Reports loaded successfully on bucket {params['bucketName']} from project {params['projectId']}"}
+
+
+
+def get_revenue_reports(params, token):
+    header = {'Authorization': f"Bearer {token}"}
+    for config in params['requests']:
+
+        _dict = {
+            'startDate': (datetime.strptime(params['ds'], '%Y-%m-%d') - timedelta(days=(config['startDate']))).strftime('%Y-%m-%d'),
+            'endDate': (datetime.strptime(params['ds'], '%Y-%m-%d') - timedelta(days=config['endDate'])).strftime('%Y-%m-%d'),
+            'appKey': config['appKey']
+        }
+
+        config['parameters'].update(_dict)
+
+        logger.info(
+                f'Getting data from IR Api: {datetime.now().strftime("%H:%M:%S")}')
+
+        is_data = req.get(config['baseURL'], headers=header,
+                          params=config['parameters']).json()
+
+        logger.info(
+                f'Unpacking nested data: {datetime.now().strftime("%H:%M:%S")}')
+
+        rows = explode(is_data)
+
+        appkey = config['appKey']
+        process_date = params['ds']
+
+        json_path = os.path.join(BASE_PATH, f"temp/ad_revenue_reports_{appkey}_{process_date}.json")
+        blob_path = f"ad_revenue_reports/ad_revenue_reports_{appkey}_{process_date}.json"
+
+        logger.info(
+                f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
+
+        with open(json_path, 'w') as _file:
+            _file.write(json.dumps(rows))
+
+        with open(json_path, 'rb') as _file:
+            insert_file_to_bucket(_file, blob_path, params['projectId'], params['bucketName'])
+        
+        logger.info(
+            f'Uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
+
+
+        logger.info(
+            f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
+
+        remove_file(json_path) 
+
+        
