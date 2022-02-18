@@ -15,4 +15,4 @@ COPY . ./
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD gunicorn --bind :$PORT --workers 1 --worker-class uvicorn.workers.UvicornWorker  --threads 8 app:app
+CMD gunicorn --bind :$PORT --workers $WORKERS --worker-class uvicorn.workers.UvicornWorker  --threads 8 app:app
