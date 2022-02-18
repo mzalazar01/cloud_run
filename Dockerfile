@@ -8,11 +8,11 @@ ENV PYTHONUNBUFFERED True
 
 # Copy local code to the container image.
 ENV APP_HOME /app
-ENV GOOGLE_APPLICATION_CREDENTIALS "sybogames-analytics-dev-2bfad2adb3ac.json"
+
 WORKDIR $APP_HOME
 COPY . ./
 
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+CMD gunicorn --bind :$PORT --workers 1 --worker-class uvicorn.workers.UvicornWorker  --threads 8 app:app
