@@ -93,7 +93,7 @@ def get_user_reports(params, token):
             #Inserting csv into bucket
 
             with gzip.open(csv_zipped, "rb") as f_in:
-                insert_file_to_bucket(f_in, blob_path, params['projectId'], params['bucketName'])
+                insert_file_to_bucket(f_in, blob_path, params['projectId'], params['bucketName'], params['credentials'])
             
             logger.info(
             f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
@@ -148,7 +148,7 @@ def get_revenue_reports(params, token):
             _file.write(json.dumps(rows))
 
         with open(json_path, 'rb') as _file:
-            insert_file_to_bucket(_file, blob_path, params['projectId'], params['bucketName'])
+            insert_file_to_bucket(_file, blob_path, params['projectId'], params['bucketName'], params['credentials'])
         
         logger.info(
             f'Uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
