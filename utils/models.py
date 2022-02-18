@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta, date
-from pydantic import BaseModel,validator, StrictStr, Field, conint, StrictInt
+from datetime import datetime
+from pydantic import BaseModel,validator, StrictStr, Field, conint
 from typing import Dict, Union, List
 
 class RequestModel(BaseModel):
@@ -28,11 +28,12 @@ class RequestModel(BaseModel):
         }
 
 class BaseRequestModel(BaseModel):
-    ds: StrictStr = Field(..., description="ds must have %Y-%m-%d format. DS is the reference date, do not submit the process date you want from the IR API")
-    refreshToken: StrictStr = Field(..., description="refreshToken needs to be obtained from ...")
-    secretKey: StrictStr = Field(..., description="secretKey needs to be obtained from ...")
-    bucketName: StrictStr = Field('sybogames-analytics-dev', description="bucketName is the bucket to use, NOT the path of the blob")
-    projectId: StrictStr = Field('sybogames-analytics-dev', description="projectId refers to the name of the project inside GCP")
+    ds: StrictStr
+    refreshToken: StrictStr
+    secretKey: StrictStr
+    bucketName: StrictStr
+    projectId: StrictStr
+    credentials: Dict[str, str]
     requests: List[RequestModel]
 
     @validator('ds')
@@ -46,22 +47,33 @@ class BaseRequestModel(BaseModel):
     class Config:
         schema_extra = {
             "example": {
-                "ds": "2022-02-07",
-                "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
-                "secretKey": "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0.bQTnz6AuMJvmXXQsVPrxeQNvzDkimo7VNXxHeSBfClLufmCVZRUuyTwJF311JHuh",
-                "bucketName": "sybogames-analytics-test",
-                "projectId": "sybogames-analytics-test",
-                "requests": [
-                                {
-                                'baseURL': "https://platform.ironsrc.com/partners/publisher/mediation/applications/v6/stats",
-                                'appKey': 'e4895939',
-                                'startDate': 2,
-                                'endDate':0,
-                                'parameters': {
-                                            "metrics": "activeUsers,engagedUsers,appRequests,appFillRate,clicks,impressions,completions,revenue,eCPM",
-                                            "breakdown": "date,app,platform,country"
-                                        }
-                                }
-                            ]
-            }
+                        'ds':'2022-02-10',
+                        'refreshToken':'c045d2d022320f9a1cd3a458405f1969',
+                        'secretKey':'e573afb8afa54298f82b2de1d8b073ed',
+                        'bucketName':'sybogames-analytics-dev', 
+                        'projectId':'sybogames-analytics-dev',
+                        'credentials': {
+                            "type": "service_account",
+                            "project_id": "sybogames-analytics-test",
+                            "private_key_id": "........",
+                            "private_key": "-----BEGIN PRIVATE KEY----- ... \n-----END PRIVATE KEY-----\n",
+                            "client_email": "sybogames-analytics-test@appspot.gserviceaccount.com",
+                            "client_id": "...",
+                            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                            "token_uri": "https://oauth2.googleapis.com/token",
+                            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+                            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/sybogames-analytics-test%40appspot.gserviceaccount.com"
+                        },
+                        'requests': [
+                            {
+                            'baseURL': "https://platform.ironsrc.com/partners/userAdRevenue/v3",
+                            'appKey': 'e4895939',
+                            'startDate': 2,
+                            'endDate':0,
+                            'parameters': {
+                                        "reportType":1
+                                    }
+                            },
+                        ]
+                    }
         }

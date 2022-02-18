@@ -1,3 +1,4 @@
+from google.oauth2 import service_account
 from google.cloud import storage
 import requests as req
 import os
@@ -33,9 +34,11 @@ def insert_file_to_bucket(
     _file,
     blob_path,
     project_id,
-    bucket_name
+    bucket_name,
+    credentials_dict
 ):
-    client = storage.Client(project=project_id)
+    credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+    client = storage.Client(project=project_id, credentials=credentials)
     bucket = client.get_bucket(bucket_name)
     blob = bucket.blob(blob_path) 
     blob.upload_from_file(_file)
