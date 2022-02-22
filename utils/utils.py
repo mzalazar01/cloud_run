@@ -1,3 +1,4 @@
+from fastavro import writer, parse_schema
 from google.oauth2 import service_account
 from google.cloud import storage
 import requests as req
@@ -43,3 +44,8 @@ def insert_file_to_bucket(
     blob = bucket.blob(blob_path) 
     blob.upload_from_file(_file)
 
+
+def to_avro(schema, records, avro_path):
+    parsed_schema = parse_schema(schema)
+    with open(avro_path, 'wb') as out:
+        writer(out, parsed_schema, records)
