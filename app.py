@@ -80,9 +80,8 @@ def get_user_reports(params, token):
 
             #Making paths to temp files
             csv_zipped = os.path.join(BASE_PATH, 'temp/temp.csv.gz')
-
             blob_date = _conf['parameters']['date']
-            blob_path = f"user_reports/{process_date}/user_reports_{appkey}_{blob_date}.csv.gz"
+            blob_path = f"user_reports/{params['ds']}/user_reports_{appkey}_{blob_date}.csv.gz"
 
             remove_file(csv_zipped) 
 
@@ -149,8 +148,12 @@ def get_revenue_reports(params, token):
         logger.info(
                 f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
 
+        # Creating newline delimited json
+        result = [json.dumps(record) for record in rows]
+
         with open(json_path, 'w') as _file:
-            _file.write(json.dumps(rows))
+            for line in result:
+                _file.write(line+'\n')
 
         with open(json_path, 'rb') as _file:
             insert_file_to_bucket(_file, blob_path, params['projectId'], params['bucketName'], params['credentials'])
