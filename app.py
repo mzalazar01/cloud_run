@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
 from utils.models import BaseRequestModel
 from utils.utils import get_bearer_token, remove_file, insert_file_to_bucket, explode
 import requests as req
 import logging
 import gzip
 import json
+import csv
 import os
 
 app = FastAPI()
@@ -79,7 +80,10 @@ def get_user_reports(params, token):
 
             #Making paths to temp files
             csv_zipped = os.path.join(BASE_PATH, 'temp/temp.csv.gz')
-            blob_path = f"user_reports/user_reports_{appkey}_{process_date}.csv"
+
+            blob_date = _conf['parameters']['date']
+            blob_folder = datetime.strptime(params['ds'], '%Y%m%d').strftime('%Y%m%d')
+            blob_path = f"user_reports/{blob_folder}/user_reports_{appkey}_{blob_date}.csv.gz"
 
             remove_file(csv_zipped) 
 
@@ -92,7 +96,7 @@ def get_user_reports(params, token):
             
             #Inserting csv into bucket
 
-            with gzip.open(csv_zipped, "rb") as f_in:
+            with open(csv_zipped, 'rb') as f_in:
                 insert_file_to_bucket(f_in, blob_path, params['projectId'], params['bucketName'], params['credentials'])
             
             logger.info(
@@ -139,7 +143,10 @@ def get_revenue_reports(params, token):
         process_date = params['ds']
 
         json_path = os.path.join(BASE_PATH, f"temp/ad_revenue_reports_{appkey}_{process_date}.json")
-        blob_path = f"ad_revenue_reports/ad_revenue_reports_{appkey}_{process_date}.json"
+
+        blob_date = f"{config['parameters']['startDate']}_{config['parameters']['endDate']}"
+        blob_folder = datetime.strptime(params['ds'], '%Y%m%d').strftime('%Y%m%d')
+        blob_path = f"ad_revenue_reports/{blob_folder}/ad_revenue_reports_{appkey}_{blob_date}.json"
 
         logger.info(
                 f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
