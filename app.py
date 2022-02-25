@@ -81,7 +81,7 @@ def get_user_reports(params, token):
             #Making paths to temp files
             csv_zipped = os.path.join(BASE_PATH, 'temp/temp.csv.gz')
             blob_date = _conf['parameters']['date']
-            blob_path = f"user_reports/{params['ds']}/user_reports_{appkey}_{blob_date}.csv.gz"
+            blob_path = f"imports/ironsource/user_reports/{params['ds']}/user_reports_{appkey}_{blob_date}.csv.gz"
 
             remove_file(csv_zipped) 
 
@@ -143,7 +143,7 @@ def get_revenue_reports(params, token):
         json_path = os.path.join(BASE_PATH, f"temp/ad_revenue_reports_{appkey}_{process_date}.json")
 
         blob_date = f"{config['parameters']['startDate']}_{config['parameters']['endDate']}"
-        blob_path = f"ad_revenue_reports/{process_date}/ad_revenue_reports_{appkey}_{blob_date}.json"
+        blob_path = f"imports/ironsource/ad_revenue_reports/{process_date}/ad_revenue_reports_{appkey}_{blob_date}.json"
 
         logger.info(
                 f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
