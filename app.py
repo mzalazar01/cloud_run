@@ -35,12 +35,12 @@ async def user_reports(request: BaseRequestModel):
     
     token = get_bearer_token(params['secretKey'], params['refreshToken'])
 
-    get_user_reports(params, token)
+    user_reports_api_to_gcs(params, token)
 
     return {'message': f"Reports loaded successfully on bucket {params['bucketName']} from project {params['projectId']}"}
 
 
-def get_user_reports(params, token):
+def user_reports_api_to_gcs(params, token):
 
     header = {'Authorization': f"Bearer {token}"}
     
@@ -108,13 +108,28 @@ async def ad_revenue_reports(request: BaseRequestModel):
     
     token = get_bearer_token(params['secretKey'], params['refreshToken'])
 
-    get_revenue_reports(params, token)
+    ad_report_type = 'ad_revenue'
+
+    ad_reports_api_to_gcs(params, token, ad_report_type)
+
+    return {'message': f"Reports loaded successfully on bucket {params['bucketName']} from project {params['projectId']}"}
+
+        
+@app.post("/ironsource/ad_network_reports/", status_code=201)
+async def ad_network_reports(request: BaseRequestModel):
+
+    params = request.dict()
+    
+    token = get_bearer_token(params['secretKey'], params['refreshToken'])
+
+    ad_report_type = 'ad_network'
+
+    ad_reports_api_to_gcs(params, token, ad_report_type)
 
     return {'message': f"Reports loaded successfully on bucket {params['bucketName']} from project {params['projectId']}"}
 
 
-
-def get_revenue_reports(params, token):
+def ad_reports_api_to_gcs(params, token, ad_report_type):
     header = {'Authorization': f"Bearer {token}"}
     for config in params['requests']:
 
@@ -140,10 +155,10 @@ def get_revenue_reports(params, token):
         appkey = config['appKey']
         process_date = params['ds']
 
-        json_path = os.path.join(BASE_PATH, f"temp/ad_revenue_reports_{appkey}_{process_date}.json")
+        json_path = os.path.join(BASE_PATH, f"temp/{ad_report_type}_{appkey}_{process_date}.json")
 
         blob_date = f"{config['parameters']['startDate']}_{config['parameters']['endDate']}"
-        blob_path = f"imports/ironsource/ad_revenue_reports/{process_date}/ad_revenue_reports_{appkey}_{blob_date}.json"
+        blob_path = f"imports/ironsource/{ad_report_type}/{process_date}/{ad_report_type}_{appkey}_{blob_date}.json"
 
         logger.info(
                 f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
@@ -166,5 +181,3 @@ def get_revenue_reports(params, token):
             f'Finished uploading reports file to bucket: {datetime.now().strftime("%H:%M:%S")}')
 
         remove_file(json_path) 
-
-        
