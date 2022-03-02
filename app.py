@@ -155,10 +155,10 @@ def ad_reports_api_to_gcs(params, token, ad_report_type):
         appkey = config['appKey']
         process_date = params['ds']
 
-        json_path = os.path.join(BASE_PATH, f"temp/{ad_report_type}_{appkey}_{process_date}.json")
+        json_path = os.path.join(BASE_PATH, f"temp/{ad_report_type}_reports_{appkey}_{process_date}.json")
 
         blob_date = f"{config['parameters']['startDate']}_{config['parameters']['endDate']}"
-        blob_path = f"imports/ironsource/{ad_report_type}/{process_date}/{ad_report_type}_{appkey}_{blob_date}.json"
+        blob_path = f"imports/ironsource/{ad_report_type}_reports/{process_date}/{ad_report_type}_reports_{appkey}_{blob_date}.json"
 
         logger.info(
                 f'Creating temp json file from unnested rows: {datetime.now().strftime("%H:%M:%S")}')
